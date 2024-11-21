@@ -16,11 +16,11 @@ if [ -z "$4" ]; then
   zone=us-east-1a
 fi
 
-if hostname -I 2>/dev/null; then
-  myip=$(hostname -I | awk '{ print $1 }')
-else
-  myip=$(ipconfig getifaddr en0)
-fi
+# if hostname -I 2>/dev/null; then
+#   myip=$(hostname -I | awk '{ print $1 }')
+# else
+#   myip=$(ipconfig getifaddr en0)
+# fi
 
 reg_name='kind-registry'
 reg_port='5000'
@@ -117,7 +117,7 @@ kind create cluster --name kind${number} --config kind${number}.yaml
 ipkind=$(docker inspect kind${number}-control-plane | jq -r '.[0].NetworkSettings.Networks[].IPAddress')
 networkkind=$(echo ${ipkind} | awk -F. '{ print $1"."$2 }')
 
-kubectl config set-cluster kind-kind${number} --server=https://${myip}:70${twodigits} --insecure-skip-tls-verify=true
+# kubectl config set-cluster kind-kind${number} --server=https://${myip}:70${twodigits} --insecure-skip-tls-verify=true
 
 helm repo add cilium https://helm.cilium.io/
 
