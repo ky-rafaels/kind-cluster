@@ -16,11 +16,36 @@ if [ -z "$4" ]; then
   zone=us-east-1a
 fi
 
-# if hostname -I 2>/dev/null; then
-#   myip=$(hostname -I | awk '{ print $1 }')
-# else
-#   myip=$(ipconfig getifaddr en0)
-# fi
+# Check if mac or ubuntu
+unameOut="$(uname -s)"
+case "${unameOut}" in
+    Linux*)     machine=Linux;;
+    Darwin*)    machine=Mac;;
+esac
+
+# If mac
+function is_mac() {
+  if hostname -I 2>/dev/null; then
+    myip=$(hostname -I | awk '{ print $1 }')
+  elif [ -n $(ipconfig getifaddr en0) ]; then
+    myip=$(ipconfig getifaddr en0)
+  else
+    myip=$(ipconfig getifaddr en7)
+  fi
+}
+
+# If ubuntu
+function is_ubuntu() {
+    if hostname -I 2>/dev/null; then
+      myip=$(hostname -I | awk '{print $1}')
+    fi
+}
+
+if [ $machine == "Darwin" ]; then
+  is_mac
+elif [ $machine == "Linux" ]; then
+  is_ubuntu
+fi
 
 reg_name='kind-registry'
 reg_port='5000'
@@ -117,7 +142,7 @@ kind create cluster --name kind${number} --config kind${number}.yaml
 ipkind=$(docker inspect kind${number}-control-plane | jq -r '.[0].NetworkSettings.Networks[].IPAddress')
 networkkind=$(echo ${ipkind} | awk -F. '{ print $1"."$2 }')
 
-# kubectl config set-cluster kind-kind${number} --server=https://${myip}:70${twodigits} --insecure-skip-tls-verify=true
+kubectl config set-cluster kind-kind${number} --server=https://${myip}:70${twodigits} --insecure-skip-tls-verify=true
 
 helm repo add cilium https://helm.cilium.io/
 
@@ -125,7 +150,7 @@ helm --kube-context kind-kind${number} install cilium cilium/cilium --version 1.
    --namespace kube-system \
    --set prometheus.enabled=true \
    --set operator.prometheus.enabled=true \
-   --set k8sServiceHost=kind1-control-plane \
+   --set k8sServiceHost=kind${number}-control-plane \
    --set k8sServicePort=6443 \
    --set hubble.enabled=true \
    --set hubble.metrics.enabled="{dns:destinationContext=pod|ip;sourceContext=pod|ip,drop:destinationContext=pod|ip;sourceContext=pod|ip,tcp:destinationContext=pod|ip;sourceContext=pod|ip,flow:destinationContext=pod|ip;sourceContext=pod|ip,port-distribution:destinationContext=pod|ip;sourceContext=pod|ip}" \
@@ -138,9 +163,9 @@ helm --kube-context kind-kind${number} install cilium cilium/cilium --version 1.
    --set externalIPs.enabled=true \
    --set nodePort.enabled=true \
    --set hostPort.enabled=true \
-   --set ipv4NativeRoutingCIDR="10.101.0.0/16" \
-   --set bpf.masquerade=true \
+   --set ipv4NativeRoutingCIDR="10.1${twodigits}.0.0/16" \
    --set routingMode=native \
+   --set bpf.masquerade=true \
    --set autoDirectNodeRoutes=true \
    --set image.pullPolicy=IfNotPresent \
    --set ipam.mode=kubernetes

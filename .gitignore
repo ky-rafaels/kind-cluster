@@ -2,4 +2,6 @@
 *.yaml
 
 # ignore any mounted host path pvc
-./shared-storage/*
+*shared-storage/*
+
+registries
