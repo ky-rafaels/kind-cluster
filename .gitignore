@@ -1,0 +1,5 @@
+# ignore yaml generated from script
+*.yaml
+
+# ignore any mounted host path pvc
+./shared-storage/*
