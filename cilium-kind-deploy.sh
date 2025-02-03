@@ -187,6 +187,8 @@ docker network connect "kind" gcr || true
 # Preload MetalLB images
 docker pull quay.io/metallb/controller:v0.13.12
 docker pull quay.io/metallb/speaker:v0.13.12
+# Make a tmp dir, could deprecate this step in the future
+mkdir $HOME/tmp
 TMPDIR=$HOME/tmp kind load docker-image quay.io/metallb/controller:v0.13.12 --name kind${number}
 TMPDIR=$HOME/tmp kind load docker-image quay.io/metallb/speaker:v0.13.12 --name kind${number}
 kubectl --context=kind-kind${number} apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.12/config/manifests/metallb-native.yaml
