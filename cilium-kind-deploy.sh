@@ -95,7 +95,7 @@ EOF
     -d --restart=always -v ${HOME}/.${cache_name}-config.yml:/etc/docker/registry/config.yml --name "${cache_name}" \
     registry:2
 fi
-done
+# done
 
 cat << EOF > kind${number}.yaml
 kind: Cluster
@@ -176,17 +176,17 @@ helm --kube-context kind-kind${number} install cilium cilium/cilium --version 1.
 kubectl --context=kind-kind${number} -n kube-system rollout status ds cilium || true
 
 docker network connect "kind" "${reg_name}" || true
-docker network connect "kind" docker || true
-docker network connect "kind" us-docker || true
-docker network connect "kind" us-central1-docker || true
-docker network connect "kind" quay || true
-docker network connect "kind" gcr || true
+# docker network connect "kind" docker || true
+# docker network connect "kind" us-docker || true
+# docker network connect "kind" us-central1-docker || true
+# docker network connect "kind" quay || true
+# docker network connect "kind" gcr || true
 
 # Preload MetalLB images
 docker pull quay.io/metallb/controller:v0.13.12
 docker pull quay.io/metallb/speaker:v0.13.12
 # Make a tmp dir, could deprecate this step in the future
-mkdir $HOME/tmp
+mkdir -p $HOME/tmp
 TMPDIR=$HOME/tmp kind load docker-image quay.io/metallb/controller:v0.13.12 --name kind${number}
 TMPDIR=$HOME/tmp kind load docker-image quay.io/metallb/speaker:v0.13.12 --name kind${number}
 kubectl --context=kind-kind${number} apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.12/config/manifests/metallb-native.yaml
