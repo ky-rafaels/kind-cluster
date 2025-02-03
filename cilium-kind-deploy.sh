@@ -66,30 +66,30 @@ fi
 # EOF
 
 # cat registries | while read cache_name cache_url; do
-running="$(docker inspect -f '{{.State.Running}}' "${cache_name}" 2>/dev/null || true)"
-if [ "${running}" != 'true' ]; then
-  cat > ${HOME}/.${cache_name}-config.yml <<EOF
-version: 0.1
-proxy:
-  remoteurl: ${cache_url}
-log:
-  fields:
-    service: registry
-storage:
-  cache:
-    blobdescriptor: inmemory
-  filesystem:
-    rootdirectory: /var/lib/registry
-http:
-  addr: :5000
-  headers:
-    X-Content-Type-Options: [nosniff]
-health:
-  storagedriver:
-    enabled: true
-    interval: 10s
-    threshold: 3
-EOF
+# running="$(docker inspect -f '{{.State.Running}}' "${cache_name}" 2>/dev/null || true)"
+# if [ "${running}" != 'true' ]; then
+#   cat > ${HOME}/.${cache_name}-config.yml <<EOF
+# version: 0.1
+# proxy:
+#   remoteurl: ${cache_url}
+# log:
+#   fields:
+#     service: registry
+# storage:
+#   cache:
+#     blobdescriptor: inmemory
+#   filesystem:
+#     rootdirectory: /var/lib/registry
+# http:
+#   addr: :5000
+#   headers:
+#     X-Content-Type-Options: [nosniff]
+# health:
+#   storagedriver:
+#     enabled: true
+#     interval: 10s
+#     threshold: 3
+# EOF
 
   docker run \
     -d --restart=always -v ${HOME}/.${cache_name}-config.yml:/etc/docker/registry/config.yml --name "${cache_name}" \
@@ -185,10 +185,6 @@ docker network connect "kind" "${reg_name}" || true
 # Preload MetalLB images
 docker pull quay.io/metallb/controller:v0.13.12
 docker pull quay.io/metallb/speaker:v0.13.12
-# Make a tmp dir, could deprecate this step in the future
-mkdir -p $HOME/tmp
-TMPDIR=$HOME/tmp kind load docker-image quay.io/metallb/controller:v0.13.12 --name kind${number}
-TMPDIR=$HOME/tmp kind load docker-image quay.io/metallb/speaker:v0.13.12 --name kind${number}
 kubectl --context=kind-kind${number} apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.12/config/manifests/metallb-native.yaml
 kubectl --context=kind-kind${number} create secret generic -n metallb-system memberlist --from-literal=secretkey="$(openssl rand -base64 128)"
 kubectl --context=kind-kind${number} -n metallb-system rollout status deploy controller || true
