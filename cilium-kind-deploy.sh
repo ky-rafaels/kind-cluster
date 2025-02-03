@@ -129,19 +129,17 @@ kubeadmConfigPatches:
       node-labels: "ingress-ready=true,topology.kubernetes.io/region=${region},topology.kubernetes.io/zone=${zone}"
 containerdConfigPatches:
 - |-
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:${reg_port}"]
-    endpoint = ["http://${reg_name}:${reg_port}"]
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
-    endpoint = ["http://docker:${cache_port}"]
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."us-docker.pkg.dev"]
-    endpoint = ["http://us-docker:${cache_port}"]
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."us-central1-docker.pkg.dev"]
-    endpoint = ["http://us-central1-docker:${cache_port}"]
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."quay.io"]
-    endpoint = ["http://quay:${cache_port}"]
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."gcr.io"]
-    endpoint = ["http://gcr:${cache_port}"]
+  [plugins."io.containerd.grpc.v1.cri".registry]
+    config_path = "/etc/containerd/certs.d"
 EOF
+
+REGISTRY_DIR="/etc/containerd/certs.d/localhost:${reg_port}"
+for node in $(kind get nodes); do
+  docker exec "${node}" mkdir -p "${REGISTRY_DIR}"
+  cat <<EOF | docker exec -i "${node}" cp /dev/stdin "${REGISTRY_DIR}/hosts.toml"
+[host."http://${reg_name}:5000"]
+EOF
+done
 
 kind create cluster --name kind${number} --config kind${number}.yaml
 
