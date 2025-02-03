@@ -56,46 +56,46 @@ if [ "${running}" != 'true' ]; then
     registry:2
 fi
 
-cache_port='5000'
-cat > registries <<EOF
-docker https://registry-1.docker.io
-us-docker https://us-docker.pkg.dev
-us-central1-docker https://us-central1-docker.pkg.dev
-quay https://quay.io
-gcr https://gcr.io
-EOF
+# cache_port='5000'
+# cat > registries <<EOF
+# docker https://registry-1.docker.io
+# us-docker https://us-docker.pkg.dev
+# us-central1-docker https://us-central1-docker.pkg.dev
+# quay https://quay.io
+# gcr https://gcr.io
+# EOF
 
-cat registries | while read cache_name cache_url; do
-running="$(docker inspect -f '{{.State.Running}}' "${cache_name}" 2>/dev/null || true)"
-if [ "${running}" != 'true' ]; then
-  cat > ${HOME}/.${cache_name}-config.yml <<EOF
-version: 0.1
-proxy:
-  remoteurl: ${cache_url}
-log:
-  fields:
-    service: registry
-storage:
-  cache:
-    blobdescriptor: inmemory
-  filesystem:
-    rootdirectory: /var/lib/registry
-http:
-  addr: :5000
-  headers:
-    X-Content-Type-Options: [nosniff]
-health:
-  storagedriver:
-    enabled: true
-    interval: 10s
-    threshold: 3
-EOF
+# cat registries | while read cache_name cache_url; do
+# running="$(docker inspect -f '{{.State.Running}}' "${cache_name}" 2>/dev/null || true)"
+# if [ "${running}" != 'true' ]; then
+#   cat > ${HOME}/.${cache_name}-config.yml <<EOF
+# version: 0.1
+# proxy:
+#   remoteurl: ${cache_url}
+# log:
+#   fields:
+#     service: registry
+# storage:
+#   cache:
+#     blobdescriptor: inmemory
+#   filesystem:
+#     rootdirectory: /var/lib/registry
+# http:
+#   addr: :5000
+#   headers:
+#     X-Content-Type-Options: [nosniff]
+# health:
+#   storagedriver:
+#     enabled: true
+#     interval: 10s
+#     threshold: 3
+# EOF
 
   docker run \
     -d --restart=always -v ${HOME}/.${cache_name}-config.yml:/etc/docker/registry/config.yml --name "${cache_name}" \
     registry:2
 fi
-done
+# done
 
 cat << EOF > kind${number}.yaml
 kind: Cluster
@@ -108,10 +108,17 @@ nodes:
     hostPort: 70${twodigits}
 - role: worker
   image: ${kindest_node}
+  extraMounts:
+  - hostPath: ./shared-storage
+    containerPath: /var/local-path-provisioner
 - role: worker
   image: ${kindest_node}
+  extraMounts:
+  - hostPath: ./shared-storage
+    containerPath: /var/local-path-provisioner
 networking:
   disableDefaultCNI: true
+  kubeProxyMode: none
   serviceSubnet: "10.$(echo $twodigits | sed 's/^0*//').0.0/16"
   podSubnet: "10.1${twodigits}.0.0/16"
 kubeadmConfigPatches:
@@ -122,19 +129,17 @@ kubeadmConfigPatches:
       node-labels: "ingress-ready=true,topology.kubernetes.io/region=${region},topology.kubernetes.io/zone=${zone}"
 containerdConfigPatches:
 - |-
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:${reg_port}"]
-    endpoint = ["http://${reg_name}:${reg_port}"]
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
-    endpoint = ["http://docker:${cache_port}"]
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."us-docker.pkg.dev"]
-    endpoint = ["http://us-docker:${cache_port}"]
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."us-central1-docker.pkg.dev"]
-    endpoint = ["http://us-central1-docker:${cache_port}"]
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."quay.io"]
-    endpoint = ["http://quay:${cache_port}"]
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."gcr.io"]
-    endpoint = ["http://gcr:${cache_port}"]
+  [plugins."io.containerd.grpc.v1.cri".registry]
+    config_path = "/etc/containerd/certs.d"
 EOF
+
+REGISTRY_DIR="/etc/containerd/certs.d/localhost:${reg_port}"
+for node in $(kind get nodes); do
+  docker exec "${node}" mkdir -p "${REGISTRY_DIR}"
+  cat <<EOF | docker exec -i "${node}" cp /dev/stdin "${REGISTRY_DIR}/hosts.toml"
+[host."http://${reg_name}:5000"]
+EOF
+done
 
 kind create cluster --name kind${number} --config kind${number}.yaml
 
@@ -143,20 +148,16 @@ networkkind=$(echo ${ipkind} | awk -F. '{ print $1"."$2 }')
 
 kubectl config set-cluster kind-kind${number} --server=https://${myip}:70${twodigits} --insecure-skip-tls-verify=true
 
-kubectl --context kind-kind${number} apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.2/manifests/calico.yaml
-
 docker network connect "kind" "${reg_name}" || true
-docker network connect "kind" docker || true
-docker network connect "kind" us-docker || true
-docker network connect "kind" us-central1-docker || true
-docker network connect "kind" quay || true
-docker network connect "kind" gcr || true
+# docker network connect "kind" docker || true
+# docker network connect "kind" us-docker || true
+# docker network connect "kind" us-central1-docker || true
+# docker network connect "kind" quay || true
+# docker network connect "kind" gcr || true
 
 # Preload MetalLB images
 docker pull quay.io/metallb/controller:v0.13.12
 docker pull quay.io/metallb/speaker:v0.13.12
-TMPDIR=$HOME/tmp kind load docker-image quay.io/metallb/controller:v0.13.12 --name kind${number}
-TMPDIR=$HOME/tmp kind load docker-image quay.io/metallb/speaker:v0.13.12 --name kind${number}
 kubectl --context=kind-kind${number} apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.12/config/manifests/metallb-native.yaml
 kubectl --context=kind-kind${number} create secret generic -n metallb-system memberlist --from-literal=secretkey="$(openssl rand -base64 128)"
 kubectl --context=kind-kind${number} -n metallb-system rollout status deploy controller || true
