@@ -56,16 +56,16 @@ if [ "${running}" != 'true' ]; then
     registry:2
 fi
 
-cache_port='5000'
-cat > registries <<EOF
-docker https://registry-1.docker.io
-us-docker https://us-docker.pkg.dev
-us-central1-docker https://us-central1-docker.pkg.dev
-quay https://quay.io
-gcr https://gcr.io
-EOF
+# cache_port='5000'
+# cat > registries <<EOF
+# docker https://registry-1.docker.io
+# us-docker https://us-docker.pkg.dev
+# us-central1-docker https://us-central1-docker.pkg.dev
+# quay https://quay.io
+# gcr https://gcr.io
+# EOF
 
-cat registries | while read cache_name cache_url; do
+# cat registries | while read cache_name cache_url; do
 running="$(docker inspect -f '{{.State.Running}}' "${cache_name}" 2>/dev/null || true)"
 if [ "${running}" != 'true' ]; then
   cat > ${HOME}/.${cache_name}-config.yml <<EOF
