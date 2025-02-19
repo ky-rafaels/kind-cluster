@@ -48,11 +48,11 @@ elif [ $machine == "Linux" ]; then
 fi
 
 reg_name='kind-registry'
-reg_port='5000'
+reg_port='5001'
 running="$(docker inspect -f '{{.State.Running}}' "${reg_name}" 2>/dev/null || true)"
 if [ "${running}" != 'true' ]; then
   docker run \
-    -d --restart=always -p "0.0.0.0:${reg_port}:5000" --name "${reg_name}" \
+    -d --restart=always -p "127.0.0.1:${reg_port}:5000" --name "${reg_name}" \
     registry:2
 fi
 
@@ -91,10 +91,10 @@ fi
 #     threshold: 3
 # EOF
 
-  docker run \
-    -d --restart=always -v ${HOME}/.${cache_name}-config.yml:/etc/docker/registry/config.yml --name "${cache_name}" \
-    registry:2
-fi
+#   docker run \
+#     -d --restart=always -v ${HOME}/.${cache_name}-config.yml:/etc/docker/registry/config.yml --name "${cache_name}" \
+#     registry:2
+# fi
 # done
 
 cat << EOF > kind${number}.yaml
