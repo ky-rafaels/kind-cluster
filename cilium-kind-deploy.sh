@@ -63,7 +63,7 @@ fi
 # quay https://quay.io
 # gcr https://gcr.io
 
-cache_port='5001'
+cache_port='5000'
 cat > registries <<EOF
 cgr http://cgr.dev/ky-rafaels.example.com
 EOF
