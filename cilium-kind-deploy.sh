@@ -140,7 +140,7 @@ REGISTRY_DIR="/etc/containerd/certs.d/cgr:${cache_port}"
 for node in $(kind get nodes --name kind1); do
   docker exec "${node}" mkdir -p "${REGISTRY_DIR}"
   cat <<EOF | docker exec -i "${node}" cp /dev/stdin "${REGISTRY_DIR}/hosts.toml"
-[host."http://${cache_url}:5000"]
+[host."http://${cache_name}:5000"]
 EOF
 done
 
