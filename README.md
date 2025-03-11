@@ -15,12 +15,12 @@ Feed in commandline args like below
 
 Example:
 ```bash
-./cilium-kind-deploy.sh 1 cluster1
+./kind-cluster-deploy.sh 1 cluster1
 
 or 
 
 # Label nodes wih your own AWS labels
-./cilium-kind-deploy.sh 2 mgmt us-east-1 us-east-1a
+./kind-cluster-deploy.sh 2 mgmt us-east-1 us-east-1a
 
 ```
 
